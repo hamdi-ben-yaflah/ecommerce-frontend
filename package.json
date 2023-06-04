@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "docker:build": "docker build -t ecommerce-frontend .",
+    "docker:run": "docker run -p 80:4200 ecommerce-frontend",
+    "docker:start": "npm run docker:build && npm run docker:run"
   },
   "dependencies": {
     "@types/node": "20.2.5",
