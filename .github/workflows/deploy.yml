@@ -1,0 +1,30 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Build Docker image
+        run: |
+          docker build -t ecommerce-frontend .
+
+      - name: Copy Docker Image to EC2
+        run: |
+          docker save ecommerce-frontend:latest | gzip > front-end-image.tar.gz
+          scp -i ${{ secrets.SSH_KEY }} -o StrictHostKeyChecking=no front-end-image.tar.gz ec2-user@${{ secrets.EC2_IP }}:~/front-end-image.tar.gz
+
+      - name: Load and Run Docker Image on EC2
+        run: |
+          ssh -i ${{ secrets.SSH_KEY }} -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_IP }} << EOF
+            docker load < ~/front-end-image.tar.gz
+            docker run -d -p 80:4200 ecommerce-frontend:latest
+          EOF
