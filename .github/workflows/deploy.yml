@@ -19,8 +19,11 @@ jobs:
 
       - name: Copy Docker Image to EC2
         run: |
+          echo "$SSH_KEY" > id_rsa
+          chmod 600 id_rsa
           docker save ecommerce-frontend:latest | gzip > front-end-image.tar.gz
           scp -i ${{ secrets.SSH_KEY }} -o StrictHostKeyChecking=no front-end-image.tar.gz ec2-user@${{ secrets.EC2_IP }}:~/front-end-image.tar.gz
+          rm id_rsa
 
       - name: Load and Run Docker Image on EC2
         run: |
