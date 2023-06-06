@@ -33,7 +33,7 @@ jobs:
         run: |
           echo "$SSH_KEY" > id_rsa
           chmod 600 id_rsa
-          ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@$EC2_IP << EOF
+          ssh -i id_rsa -o StrictHostKeyChecking=no ec2-user@$EC2_IP << EOF
             docker load < ~/front-end-image.tar.gz
             docker run -d -p 80:4200 ecommerce-frontend:latest
           EOF
