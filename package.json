@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 4200",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 4200",
     "lint": "next lint",
     "docker:build": "docker build -t ecommerce-frontend .",
-    "docker:run": "docker run -p 80:4200 ecommerce-frontend",
+    "docker:run": "docker run -p 4200:4200 ecommerce-frontend",
     "docker:start": "npm run docker:build && npm run docker:run"
   },
   "dependencies": {
