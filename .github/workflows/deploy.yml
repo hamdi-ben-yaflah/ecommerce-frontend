@@ -37,7 +37,7 @@ jobs:
             docker load < ~/ecommerce-frontend-image.tar.gz
             docker stop ecommerce-frontend || true
             docker rm ecommerce-frontend || true
-            docker run -d --name ecommerce-frontend -p 3000:3000 ecommerce-frontend:latest
+            docker run -d --name ecommerce-frontend -p 4200:4200 ecommerce-frontend:latest
             docker image prune -f            
           EOF
           rm id_rsa
