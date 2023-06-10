@@ -25,8 +25,8 @@ jobs:
         run: |
           echo "$SSH_KEY" > id_rsa
           chmod 600 id_rsa
-          docker save ecommerce-frontend:latest | gzip > front-end-image.tar.gz
-          scp -i id_rsa -o StrictHostKeyChecking=no front-end-image.tar.gz ec2-user@$EC2_IP:~/front-end-image.tar.gz
+          docker save ecommerce-frontend:latest | gzip > frontend-image.tar.gz
+          scp -i id_rsa -o StrictHostKeyChecking=no frontend-image.tar.gz ec2-user@$EC2_IP:~/frontend-image.tar.gz
           rm id_rsa
 
       - name: Load and Run Docker Image on EC2
@@ -34,7 +34,10 @@ jobs:
           echo "$SSH_KEY" > id_rsa
           chmod 600 id_rsa
           ssh -i id_rsa -o StrictHostKeyChecking=no ec2-user@$EC2_IP << EOF
-            docker load < ~/front-end-image.tar.gz
-            docker run -d -p 80:4200 ecommerce-frontend:latest
+            docker load < ~/ecommerce-frontend-image.tar.gz
+            docker stop ecommerce-frontend || true
+            docker rm ecommerce-frontend || true
+            docker run -d --name ecommerce-frontend -p 3000:3000 ecommerce-frontend:latest
+            docker image prune -f            
           EOF
           rm id_rsa
