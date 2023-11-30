@@ -1,14 +1,8 @@
-name: Deploy to EC2
-
-env:
-  SSH_KEY: ${{ secrets.SSH_KEY }}
-  EC2_IP: ${{ secrets.EC2_IP }}
-
+name: Deploy to App Runner - Image based # Name of the workflow
 on:
   push:
-    branches:
-      - master
-
+    branches: [master] # Trigger workflow on git push to master branch
+  workflow_dispatch: # Allow manual invocation of the workflow
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -16,28 +10,45 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
-      - name: Build Docker image
-        run: |
-          docker build -t ecommerce-frontend .
+      - name: Configure AWS credentials
+        id: aws-credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Copy Docker Image to EC2
-        run: |
-          echo "$SSH_KEY" > id_rsa
-          chmod 600 id_rsa
-          docker save ecommerce-frontend:latest | gzip > frontend-image.tar.gz
-          scp -i id_rsa -o StrictHostKeyChecking=no frontend-image.tar.gz ec2-user@$EC2_IP:~/frontend-image.tar.gz
-          rm id_rsa
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Load and Run Docker Image on EC2
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: nodejs
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          echo "$SSH_KEY" > id_rsa
-          chmod 600 id_rsa
-          ssh -i id_rsa -o StrictHostKeyChecking=no ec2-user@$EC2_IP << EOF
-            docker load < ~/ecommerce-frontend-image.tar.gz
-            docker stop ecommerce-frontend || true
-            docker rm ecommerce-frontend || true
-            docker run -d --name ecommerce-frontend -p 80:4200 ecommerce-frontend:latest
-            docker image prune -f            
-          EOF
-          rm id_rsa
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      - name: Deploy to App Runner
+        id: deploy-apprunner
+        uses: awslabs/amazon-app-runner-deploy@main
+        with:
+          service: app-runner-image-deploy-service
+          image: ${{ steps.build-image.outputs.image }}
+          access-role-arn: ${{ secrets.ROLE_ARN }}
+          runtime: NODEJS_12
+          region: ${{ secrets.AWS_REGION }}
+          cpu: 1
+          memory: 2
+          port: 5000
+          wait-for-service-stability: true
+
+      - name: App Runner output
+        run: echo "App runner output ${{ steps.deploy-apprunner.outputs.service-id }}"
